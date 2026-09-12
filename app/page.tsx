@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CharacterSelect } from "@/components/rpg/character-select"
 import { GameHud } from "@/components/rpg/game-hud"
 import { IntroCutscene } from "@/components/rpg/intro-cutscene"
 import { PlayerSprite } from "@/components/rpg/player-sprite"
@@ -12,7 +13,7 @@ import { checkPlayerAttackRange } from "@/lib/enemy-ai"
 import type { Enemy, Dragon, Projectile } from "@/lib/enemy-ai"
 import { updateSoldier, updateDragon } from "@/lib/enemy-ai"
 
-type Phase = "intro" | "dialogue" | "playing" | "clear"
+type Phase = "select" | "intro" | "dialogue" | "playing" | "clear"
 
 const DIALOGUE_LINES = [
   "Vocês não são daqui, forasteiros... o Tabuleiro os trouxe através do véu do tempo.",
@@ -45,8 +46,9 @@ const ENEMY_SETS: Record<3 | 4 | 5, Enemy[]> = {
 }
 
 export default function Page() {
-  const [phase, setPhase] = useState<Phase>("intro")
+  const [phase, setPhase] = useState<Phase>("select")
   const [line, setLine] = useState(0)
+  const [hero, setHero] = useState(PARTY[0])
   const [stage, setStage] = useState<StageId>(1)
   const [transitionStage, setTransitionStage] = useState<StageId | null>(null)
   const [dragonHp, setDragonHp] = useState(8)
@@ -57,7 +59,6 @@ export default function Page() {
   const [objectiveProgress, setObjectiveProgress] = useState(0)
   const [playerDamageFreeze, setPlayerDamageFreeze] = useState(0)
   const manager = useRef(createStageManager())
-  const hero = PARTY[0]
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const lastUpdateRef = useRef(0)
 
@@ -140,7 +141,7 @@ export default function Page() {
     [completeObjective, crystalDropped, dragonHp, enemies.length, stage]
   )
 
-  const player = usePlayerControls(phase === "playing", () => attack(player.x, player.y), stage)
+  const player = usePlayerControls(phase === "playing", () => attack(player.x, player.y), stage, hero.speed)
 
   const interact = useCallback(() => {
     if (stage === 1 && player.x > 360) completeObjective("elder")
@@ -257,6 +258,10 @@ export default function Page() {
   const isDoorOpen = stage === 3 && livingEnemies === 0
   const isFinalDoorOpen = stage === 4 && livingEnemies === 0
   const isFinalVictory = stage === 5 && livingEnemies === 0 && manager.current.canAdvance()
+
+  if (phase === "select") {
+    return <CharacterSelect characters={PARTY} onSelect={(selected) => { setHero({ ...selected }); setPhase("intro") }} />
+  }
 
   if (phase === "intro") return <IntroCutscene onEnter={() => setPhase("dialogue")} />
   if (phase === "clear" || isFinalVictory)

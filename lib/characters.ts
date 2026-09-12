@@ -1,25 +1,16 @@
-export type CharacterClass = "Paladino" | "Tank" | "Mago" | "Sacerdote"
+export type CharacterClass = "Guerreiro" | "Tanque" | "Mago" | "Sacerdote"
 
 export interface GameCharacter {
   id: string
-  /** Nome real do amigo no mundo real */
   realName: string
-  /** Classe/persona dentro do mundo medieval */
   className: CharacterClass
-  /**
-   * URL do sprite/avatar. Troque livremente por qualquer caminho em /public
-   * ou por uma URL externa. Ex: "/sprites/party/paladino.jpeg"
-   */
   image: string
   hp: number
   mp: number
-  /** Cor de destaque (usada na moldura e nas barras) */
+  speed: number
+  attackRange: number
+  ability: string
   accent: string
-  /**
-   * Como as imagens são folhas de sprite (model sheets), este enquadramento
-   * foca a "pose herói" (o personagem grande central) ao renderizar no jogo.
-   * `scale` = zoom (ex.: 2.6), `position` = object-position CSS.
-   */
   heroFrame?: { scale: number; position: string }
 }
 
@@ -29,43 +20,10 @@ export interface GameCharacter {
  * O primeiro item é tratado como o personagem principal (jogador).
  */
 export const PARTY: GameCharacter[] = [
-  {
-    id: "paladino",
-    realName: "Murilo",
-    className: "Paladino",
-    image: "/sprites/party/paladino.jpeg",
-    hp: 140,
-    mp: 50,
-    accent: "#e8c56a",
-    heroFrame: { scale: 3.1, position: "52% 62%" },
-  },
-  {
-    id: "tank",
-    realName: "Ping",
-    className: "Tank",
-    image: "/sprites/party/barbaro.jpeg",
-    hp: 120,
-    mp: 30,
-    accent: "#9aa4ad",
-  },
-  {
-    id: "mago",
-    realName: "Arthur",
-    className: "Mago",
-    image: "/sprites/party/mago.jpeg",
-    hp: 110,
-    mp: 90,
-    accent: "#a879d6",
-  },
-  {
-    id: "sacerdote",
-    realName: "Leandro",
-    className: "Sacerdote",
-    image: "/sprites/party/sacerdote.jpeg",
-    hp: 40,
-    mp: 80,
-    accent: "#5fd08a",
-  },
+  { id: "guerreiro", realName: "Murilo", className: "Guerreiro", image: "/sprites/party/warrior.png", hp: 140, mp: 50, speed: 5, attackRange: 78, ability: "Ataque físico equilibrado", accent: "#e8c56a" },
+  { id: "tanque", realName: "Ping", className: "Tanque", image: "/sprites/party/tank.png", hp: 220, mp: 30, speed: 3.5, attackRange: 64, ability: "Defesa reforçada e escudo", accent: "#9aa4ad" },
+  { id: "mago", realName: "Arthur", className: "Mago", image: "/sprites/party/mage.png", hp: 100, mp: 120, speed: 5, attackRange: 190, ability: "Magia à distância", accent: "#a879d6" },
+  { id: "sacerdote", realName: "Leandro", className: "Sacerdote", image: "/sprites/party/priest.png", hp: 125, mp: 100, speed: 4.5, attackRange: 130, ability: "Cura e ataques de luz", accent: "#5fd08a" },
 ]
 
 /** NPC que aparece na caixa de diálogo. Troque a imagem à vontade. */

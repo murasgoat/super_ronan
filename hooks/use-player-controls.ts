@@ -23,10 +23,10 @@ const JUMP_MS = 520
  * Mapeamento de teclas:
  *  - W / A / S / D  -> movimento (cima, esquerda, baixo, direita)
  *  - J / Espaço     -> ataque
- *  - K / Shift / ↑  -> pulo
- * As setas ← ↓ → também movem; ↑ é reservada para o pulo.
+ *  - K / Shift       -> pulo
+ * Todas as quatro setas também movem o personagem.
  */
-export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage: number = 1) {
+export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage: number = 1, speed: number = SPEED) {
   const [state, setState] = useState<PlayerState>({
     x: 0,
     y: 0,
@@ -65,7 +65,7 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
         triggerAttack()
         return
       }
-      if (code === "KeyK" || code === "ArrowUp" || code === "ShiftLeft" || code === "ShiftRight") {
+      if (code === "KeyK" || code === "ShiftLeft" || code === "ShiftRight") {
         triggerJump()
         return
       }
@@ -100,19 +100,19 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
         let facing = prev.facing
 
         if (held.has("KeyA") || held.has("ArrowLeft")) {
-          dx -= SPEED
+          dx -= speed
           facing = "left"
         }
         if (held.has("KeyD") || held.has("ArrowRight")) {
-          dx += SPEED
+          dx += speed
           facing = "right"
         }
         if (held.has("KeyW")) {
-          dy -= SPEED
+          dy -= speed
           facing = "up"
         }
         if (held.has("KeyS") || held.has("ArrowDown")) {
-          dy += SPEED
+          dy += speed
           facing = "down"
         }
 
@@ -144,7 +144,7 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current)
     }
-  }, [enabled])
+  }, [enabled, stage])
 
   return state
 }
