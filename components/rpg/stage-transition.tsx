@@ -21,14 +21,14 @@ export function StageTransition({ stage, onComplete }: { stage: number | null; o
       setLoading(false)
       setVisible(false)
       onComplete()
-    }, 2000)
+    }, 500)
 
     const revealTimer = window.setTimeout(() => {
       if (cancelled) return
       setLoading(false)
       setVisible(false)
       onComplete()
-    }, 900)
+    }, 500)
 
     return () => {
       cancelled = true

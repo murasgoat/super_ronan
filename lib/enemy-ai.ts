@@ -32,8 +32,9 @@ const SOLDIER_CHASE_RANGE = 120
 const SOLDIER_ATTACK_RANGE = 35
 const DRAGON_SPEED = 0.8
 const DRAGON_CHASE_RANGE = 150
-const DRAGON_ATTACK_RANGE = 100
-const ATTACK_COOLDOWN = 1200
+const DRAGON_ATTACK_RANGE = 170
+const DRAGON_HITBOX_RADIUS = 86
+const ATTACK_COOLDOWN = 2000
 
 export function updateSoldier(
   soldier: Enemy,
@@ -112,16 +113,17 @@ export function checkEnemyAttackRange(
   isBoss: boolean = false
 ): boolean {
   const dist = distance(enemyX, enemyY, playerX, playerY)
-  return isBoss ? dist < DRAGON_ATTACK_RANGE : dist < SOLDIER_ATTACK_RANGE
+  return isBoss ? dist < DRAGON_HITBOX_RADIUS : dist < SOLDIER_ATTACK_RANGE
 }
 
 export function checkPlayerAttackRange(
   playerX: number,
   playerY: number,
   targetX: number,
-  targetY: number
+  targetY: number,
+  isBoss = false
 ): boolean {
-  const PLAYER_ATTACK_RANGE = 40
+  const PLAYER_ATTACK_RANGE = isBoss ? 120 : 40
   const dist = distance(playerX, playerY, targetX, targetY)
-  return dist < PLAYER_ATTACK_RANGE
+  return dist < PLAYER_ATTACK_RANGE + (isBoss ? DRAGON_HITBOX_RADIUS : 0)
 }

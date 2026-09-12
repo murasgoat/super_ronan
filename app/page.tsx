@@ -12,7 +12,7 @@ import { createStageManager, type StageId } from "@/lib/stage-manager"
 import { checkPlayerAttackRange } from "@/lib/enemy-ai"
 import type { Enemy, Dragon, Projectile } from "@/lib/enemy-ai"
 import { updateSoldier, updateDragon } from "@/lib/enemy-ai"
-import { isInViewport, preloadStageAssets, STAGE_THEMES } from "@/lib/stage-themes"
+import { isInViewport, STAGE_THEMES } from "@/lib/stage-themes"
 
 type Phase = "select" | "intro" | "dialogue" | "playing" | "clear"
 
@@ -63,6 +63,7 @@ export default function Page() {
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const gameContainerRef = useRef<HTMLElement | null>(null)
   const lastUpdateRef = useRef(0)
+  const dragonActionTimerRef = useRef(0)
 
   const beginStage = useCallback((next: StageId) => {
     setStage(next)
@@ -72,6 +73,7 @@ export default function Page() {
     setCrystalDropped(false)
     setCrystalCollected(false)
     setPlayerDamageFreeze(0)
+    dragonActionTimerRef.current = 0
     setEnemies(
       next === 3 || next === 4 || next === 5
         ? ENEMY_SETS[next as 3 | 4 | 5].map((enemy) => ({ ...enemy, actionTimer: 0 }))
@@ -79,7 +81,6 @@ export default function Page() {
     )
     setTransitionStage(next)
     setPhase("playing")
-    void preloadStageAssets(next, 2000)
   }, [])
 
   const completeObjective = useCallback(
@@ -95,7 +96,7 @@ export default function Page() {
   const attack = useCallback(
     (playerX: number, playerY: number) => {
       if (stage === 2 && !crystalDropped && dragonHp > 0) {
-        if (checkPlayerAttackRange(playerX, playerY, 0, 0)) {
+        if (checkPlayerAttackRange(playerX, playerY, 0, 0, true)) {
           setDragonHp((current) => {
             const next = Math.max(0, current - 1)
             if (next === 0) setCrystalDropped(true)
@@ -184,7 +185,7 @@ export default function Page() {
           x: 0,
           y: 0,
           projectiles: dragonProjectiles,
-          actionTimer: 0,
+          actionTimer: dragonActionTimerRef.current,
         }
         if (dragon) {
           const result = updateDragon(
@@ -193,12 +194,13 @@ export default function Page() {
               hp: dragonHp,
               maxHp: 8,
               projectiles: dragonProjectiles,
-              actionTimer: 0,
+              actionTimer: dragonActionTimerRef.current,
             },
             player.x,
             player.y,
             now
           )
+          dragonActionTimerRef.current = result.attacking ? now : dragonActionTimerRef.current
           setDragonProjectiles(result.projectiles.slice(0, 5))
         }
       }
