@@ -56,9 +56,21 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
 
     const down = (e: KeyboardEvent) => {
       const code = e.code
-      // Impede rolagem da página com Espaço/setas.
-      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code)) {
+      const movementKeys = [
+        "KeyW",
+        "KeyA",
+        "KeyS",
+        "KeyD",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+      ]
+
+      // Captura globalmente e impede a rolagem durante o gameplay.
+      if (movementKeys.includes(code) || code === "Space") {
         e.preventDefault()
+        console.log("Key pressed:", e.key)
       }
 
       if (code === "KeyJ" || code === "Space") {
@@ -85,7 +97,8 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
   }, [enabled, triggerAttack, triggerJump])
 
   useEffect(() => {
-    const spawnX = stage === 1 ? -360 : -220
+    // -360 ficava dentro do obstáculo da borda esquerda da Fase 1.
+    const spawnX = stage === 1 ? -260 : -220
     setState((current) => ({ ...current, x: spawnX, y: 0, facing: "right" }))
   }, [stage])
 

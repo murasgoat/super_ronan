@@ -60,6 +60,7 @@ export default function Page() {
   const [playerDamageFreeze, setPlayerDamageFreeze] = useState(0)
   const manager = useRef(createStageManager())
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
+  const gameContainerRef = useRef<HTMLElement | null>(null)
   const lastUpdateRef = useRef(0)
 
   const beginStage = useCallback((next: StageId) => {
@@ -259,6 +260,12 @@ export default function Page() {
   const isFinalDoorOpen = stage === 4 && livingEnemies === 0
   const isFinalVictory = stage === 5 && livingEnemies === 0 && manager.current.canAdvance()
 
+  useEffect(() => {
+    if (phase === "playing") {
+      gameContainerRef.current?.focus({ preventScroll: true })
+    }
+  }, [phase, stage])
+
   if (phase === "select") {
     return <CharacterSelect characters={PARTY} onSelect={(selected) => { setHero({ ...selected }); setPhase("intro") }} />
   }
@@ -288,7 +295,13 @@ export default function Page() {
   const dragonDefeated = stage === 2 && dragonHp === 0
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-stone-950">
+    <main
+      ref={gameContainerRef}
+      tabIndex={-1}
+      autoFocus={phase === "playing"}
+      aria-label="Área de jogo"
+      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-stone-950 outline-none"
+    >
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url('${background}')`, imageRendering: "pixelated" }}
@@ -416,7 +429,7 @@ export default function Page() {
           <p className="font-pixel-body text-center text-[15px] leading-tight text-amber-100">
             {stage === 1 ? (
               <>
-                <span className="text-amber-400">WASD</span> atravesse o mapa · <span className="text-amber-400">E</span> falar com o Ancião
+                <span className="text-emerald-400">Movimento: Ativo</span> · <span className="text-amber-400">WASD / Setas</span> atravesse o mapa · <span className="text-amber-400">E</span> falar com o Ancião
               </>
             ) : stage === 2 ? (
               <>
