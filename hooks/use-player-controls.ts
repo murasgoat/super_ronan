@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { canMove } from "@/lib/collision"
 
 export type Facing = "up" | "down" | "left" | "right"
 export type PlayerAction = "idle" | "walk" | "attack" | "jump"
@@ -25,7 +26,7 @@ const JUMP_MS = 520
  *  - K / Shift / ↑  -> pulo
  * As setas ← ↓ → também movem; ↑ é reservada para o pulo.
  */
-export function usePlayerControls(enabled: boolean, onAttack?: () => void) {
+export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage: number = 1) {
   const [state, setState] = useState<PlayerState>({
     x: 0,
     y: 0,
@@ -84,6 +85,11 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void) {
   }, [enabled, triggerAttack, triggerJump])
 
   useEffect(() => {
+    const spawnX = stage === 1 ? -360 : -220
+    setState((current) => ({ ...current, x: spawnX, y: 0, facing: "right" }))
+  }, [stage])
+
+  useEffect(() => {
     if (!enabled) return
 
     const tick = () => {
@@ -115,9 +121,14 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void) {
         const jumping = now < jumpUntil.current
         const moving = dx !== 0 || dy !== 0
 
-        // Limita o movimento a uma área de jogo aproximada.
-        const nx = Math.max(-420, Math.min(420, prev.x + dx))
-        const ny = Math.max(-140, Math.min(140, prev.y + dy))
+        // Aplica colisão
+        let nx = prev.x + dx
+        let ny = prev.y + dy
+        
+        if (!canMove(nx, ny, 24, 28, stage)) {
+          nx = prev.x
+          ny = prev.y
+        }
 
         let action: PlayerAction = "idle"
         if (attacking) action = "attack"
