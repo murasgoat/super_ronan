@@ -145,7 +145,7 @@ export default function Page() {
   const player = usePlayerControls(phase === "playing", () => attack(player.x, player.y), stage, hero.speed)
 
   const interact = useCallback(() => {
-    if (stage === 1 && player.x > 360) completeObjective("elder")
+    if (stage === 1 && player.x > 300 && Math.abs(player.y) < 90) completeObjective("elder")
     if (stage === 2 && crystalDropped && player.x > 0) {
       setCrystalCollected(true)
       completeObjective("crystal")

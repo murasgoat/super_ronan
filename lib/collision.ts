@@ -11,7 +11,7 @@ export function distance(x1: number, y1: number, x2: number, y2: number): number
 }
 
 export const MAP_BOUNDS = {
-  stage1: { left: -420, right: 420, top: -200, bottom: 200 },
+  stage1: { left: -460, right: 460, top: -220, bottom: 220 },
   stage2: { left: -420, right: 420, top: -200, bottom: 200 },
   stage3: { left: -420, right: 420, top: -200, bottom: 200 },
   stage4: { left: -420, right: 420, top: -200, bottom: 200 },
@@ -19,9 +19,10 @@ export const MAP_BOUNDS = {
 }
 
 export const OBSTACLES: Record<number, Rect[]> = {
+  // As bordas são estreitas e não invadem o corredor central entre o jogador e o Ancião.
   1: [
-    { x: -420, y: -200, w: 100, h: 400 },
-    { x: 320, y: -200, w: 100, h: 400 },
+    { x: -460, y: -220, w: 42, h: 440 },
+    { x: 418, y: -220, w: 42, h: 440 },
   ],
   2: [
     { x: -400, y: -180, w: 80, h: 360 },

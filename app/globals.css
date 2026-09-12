@@ -225,11 +225,16 @@
 
 .sprite-sheet {
   background-repeat: no-repeat;
-  background-size: 400% 100%;
+  background-position: center;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.sprite-sheet.sprite-animated {
   animation: sprite-idle 1.2s steps(4, end) infinite;
 }
 
-.sprite-walk .sprite-sheet {
+.sprite-walk .sprite-sheet.sprite-animated {
   animation: sprite-walk 0.32s steps(4, end) infinite;
 }
 
