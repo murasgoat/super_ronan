@@ -4,15 +4,37 @@ import { useEffect, useState } from "react"
 
 export function StageTransition({ stage, onComplete }: { stage: number | null; onComplete: () => void }) {
   const [visible, setVisible] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!stage) return
+    if (!stage) {
+      setVisible(false)
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
     setVisible(true)
-    const timer = window.setTimeout(() => {
+    setLoading(true)
+    const safetyTimer = window.setTimeout(() => {
+      if (cancelled) return
+      setLoading(false)
       setVisible(false)
       onComplete()
-    }, 1200)
-    return () => window.clearTimeout(timer)
+    }, 2000)
+
+    const revealTimer = window.setTimeout(() => {
+      if (cancelled) return
+      setLoading(false)
+      setVisible(false)
+      onComplete()
+    }, 900)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(safetyTimer)
+      window.clearTimeout(revealTimer)
+    }
   }, [stage, onComplete])
 
   if (!stage) return null

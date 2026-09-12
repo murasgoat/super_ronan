@@ -12,6 +12,7 @@ import { createStageManager, type StageId } from "@/lib/stage-manager"
 import { checkPlayerAttackRange } from "@/lib/enemy-ai"
 import type { Enemy, Dragon, Projectile } from "@/lib/enemy-ai"
 import { updateSoldier, updateDragon } from "@/lib/enemy-ai"
+import { isInViewport, preloadStageAssets, STAGE_THEMES } from "@/lib/stage-themes"
 
 type Phase = "select" | "intro" | "dialogue" | "playing" | "clear"
 
@@ -78,6 +79,7 @@ export default function Page() {
     )
     setTransitionStage(next)
     setPhase("playing")
+    void preloadStageAssets(next, 2000)
   }, [])
 
   const completeObjective = useCallback(
@@ -303,10 +305,11 @@ export default function Page() {
       className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-stone-950 outline-none"
     >
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className={`absolute inset-0 bg-cover bg-center ${STAGE_THEMES[stage].className}`}
         style={{ backgroundImage: `url('${background}')`, imageRendering: "pixelated" }}
         aria-hidden="true"
       />
+      <div className={`pointer-events-none absolute inset-0 ${STAGE_THEMES[stage].overlay}`} aria-hidden="true" />
       <div className="absolute inset-0 bg-stone-950/35" aria-hidden="true" />
       <div className="absolute inset-x-0 top-1/2 mx-auto h-px max-w-5xl bg-amber-200/10" aria-hidden="true" />
 
@@ -329,7 +332,7 @@ export default function Page() {
         </div>
       )}
 
-      {dragonProjectiles.map((proj) => (
+      {dragonProjectiles.filter((proj) => isInViewport(proj.x, proj.y)).map((proj) => (
         <div
           key={proj.id}
           className="absolute z-[6] h-3 w-3 rounded-full bg-red-500 shadow-lg"
@@ -346,9 +349,9 @@ export default function Page() {
       )}
 
       {(stage === 3 || stage === 4 || stage === 5) &&
-        enemies.map(
+        enemies.filter((enemy) => enemy.hp > 0 && isInViewport(enemy.x, enemy.y)).map(
           (enemy) =>
-            enemy.hp > 0 && (
+            (
               <div
                 key={enemy.id}
                 className="absolute z-[6] -translate-x-1/2 -translate-y-1/2 text-center"
