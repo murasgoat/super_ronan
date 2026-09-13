@@ -26,7 +26,13 @@ const JUMP_MS = 520
  *  - K / Shift       -> pulo
  * Todas as quatro setas também movem o personagem.
  */
-export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage: number = 1, speed: number = SPEED) {
+export function usePlayerControls(
+  enabled: boolean,
+  onAttack?: () => void,
+  stage: number = 1,
+  speed: number = SPEED,
+  onFirstMovement?: () => void,
+) {
   const [state, setState] = useState<PlayerState>({
     x: 0,
     y: 0,
@@ -40,6 +46,7 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
   const attackUntil = useRef(0)
   const jumpUntil = useRef(0)
   const raf = useRef<number | null>(null)
+  const movementStarted = useRef(false)
 
   const triggerAttack = useCallback(() => {
     attackUntil.current = performance.now() + ATTACK_MS
@@ -97,10 +104,18 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
   }, [enabled, triggerAttack, triggerJump])
 
   useEffect(() => {
-    // -360 ficava dentro do obstáculo da borda esquerda da Fase 1.
+    // Cada fase começa em estado seguro: a IA só desperta no primeiro movimento.
+    movementStarted.current = false
     const spawnX = stage === 1 ? -260 : -220
     setState((current) => ({ ...current, x: spawnX, y: 0, facing: "right" }))
   }, [stage])
+
+  useEffect(() => {
+    if (!enabled) {
+      movementStarted.current = false
+      keys.current.clear()
+    }
+  }, [enabled])
 
   useEffect(() => {
     if (!enabled) return
@@ -133,6 +148,10 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
         const attacking = now < attackUntil.current
         const jumping = now < jumpUntil.current
         const moving = dx !== 0 || dy !== 0
+        if (moving && !movementStarted.current) {
+          movementStarted.current = true
+          onFirstMovement?.()
+        }
 
         // Aplica colisão
         let nx = prev.x + dx
@@ -157,7 +176,7 @@ export function usePlayerControls(enabled: boolean, onAttack?: () => void, stage
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current)
     }
-  }, [enabled, stage])
+  }, [enabled, onFirstMovement, speed, stage])
 
   return state
 }

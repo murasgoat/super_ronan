@@ -61,6 +61,7 @@ export default function Page() {
   const [objectiveProgress, setObjectiveProgress] = useState(0)
   const [playerDamageFreeze, setPlayerDamageFreeze] = useState(0)
   const [playerHit, setPlayerHit] = useState(false)
+  const [hasPlayerMoved, setHasPlayerMoved] = useState(false)
   const manager = useRef(createStageManager())
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const gameContainerRef = useRef<HTMLElement | null>(null)
@@ -75,6 +76,7 @@ export default function Page() {
     setCrystalDropped(false)
     setCrystalCollected(false)
     setPlayerDamageFreeze(0)
+    setHasPlayerMoved(false)
     dragonActionTimerRef.current = 0
     setEnemies(
       next === 3 || next === 4 || next === 5
@@ -147,7 +149,17 @@ export default function Page() {
     [completeObjective, crystalDropped, dragonHp, enemies.length, stage]
   )
 
-  const player = usePlayerControls(phase === "playing", () => attack(player.x, player.y), stage, hero.speed)
+  const handleFirstMovement = useCallback(() => {
+    setHasPlayerMoved(true)
+  }, [])
+
+  const player = usePlayerControls(
+    phase === "playing",
+    () => attack(player.x, player.y),
+    stage,
+    hero.speed,
+    handleFirstMovement,
+  )
 
   const interact = useCallback(() => {
     const near = (targetX: number, targetY: number, radius: number) =>
@@ -188,7 +200,7 @@ export default function Page() {
       if (now - lastUpdateRef.current < 50) return
       lastUpdateRef.current = now
 
-      if (stage === 2 && dragonHp > 0) {
+      if (hasPlayerMoved && stage === 2 && dragonHp > 0) {
         const dragon: Dragon = {
           id: 99,
           name: "Dragão",
@@ -228,7 +240,7 @@ export default function Page() {
         }
       }
 
-      if ((stage === 3 || stage === 4 || stage === 5) && enemies.length > 0) {
+      if (hasPlayerMoved && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0) {
         setEnemies((current) =>
           current.map((enemy) => {
             if (enemy.hp <= 0) return enemy
@@ -247,7 +259,7 @@ export default function Page() {
       }
 
       // O Dragão aplica 10 de dano e respeita 0,5s de invulnerabilidade.
-      if (stage === 2 && dragonProjectiles.length > 0 && now - playerDamageFreeze >= 500) {
+      if (hasPlayerMoved && stage === 2 && dragonProjectiles.length > 0 && now - playerDamageFreeze >= 500) {
         for (const proj of dragonProjectiles) {
           const dist = Math.hypot(proj.x - player.x, proj.y - player.y)
           if (dist < DRAGON_PROJECTILE_RADIUS + 14) {
@@ -265,7 +277,7 @@ export default function Page() {
       }
 
       // Dano ao jogador por contato com inimigos
-      if ((stage === 3 || stage === 4 || stage === 5) && enemies.length > 0 && now - playerDamageFreeze > 500) {
+      if (hasPlayerMoved && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0 && now - playerDamageFreeze > 500) {
         for (const enemy of enemies) {
           if (enemy.hp > 0 && enemy.attacking) {
             const dist = Math.sqrt((enemy.x - player.x) ** 2 + (enemy.y - player.y) ** 2)
@@ -289,7 +301,7 @@ export default function Page() {
     return () => {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current)
     }
-  }, [phase, stage, player.x, player.y, dragonHp, dragonProjectiles, enemies, playerDamageFreeze])
+  }, [phase, stage, player.x, player.y, dragonHp, dragonProjectiles, enemies, playerDamageFreeze, hasPlayerMoved])
 
   const objective = useMemo(() => manager.current.getObjectives()[0], [stage, objectiveProgress])
   const livingEnemies = enemies.filter((enemy) => enemy.hp > 0).length
