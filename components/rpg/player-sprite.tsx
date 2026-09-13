@@ -8,9 +8,10 @@ export interface PlayerSpriteProps {
   name?: string
   state: PlayerState
   frame?: { scale?: number; position?: string; columns?: number; rows?: number }
+  hit?: boolean
 }
 
-function PlayerSpriteComponent({ src, name = "Herói", state, frame = { scale: 1, position: "center", columns: 1, rows: 1 } }: PlayerSpriteProps) {
+function PlayerSpriteComponent({ src, name = "Herói", state, frame = { scale: 1, position: "center", columns: 1, rows: 1 }, hit = false }: PlayerSpriteProps) {
   const { x, y, facing, action, jumping, attacking } = state
   const flip = facing === "left" ? -1 : 1
   const jumpOffset = jumping ? -46 : 0
@@ -26,6 +27,7 @@ function PlayerSpriteComponent({ src, name = "Herói", state, frame = { scale: 1
 
   return (
     <div className="pointer-events-none absolute left-1/2 top-1/2 z-[5]" style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, transition: "transform 60ms linear" }} aria-label={`${name} (${action})`} role="img">
+      {hit && <div className="absolute -inset-5 z-20 rounded-full bg-red-400/70 shadow-[0_0_24px_10px_rgba(248,113,113,0.8)] animate-pulse" aria-label="Jogador atingido" />}
       <div className="absolute left-1/2 top-full h-3 w-16 -translate-x-1/2 rounded-[50%] bg-black/45" style={{ transform: `translateX(-50%) scaleX(${jumping ? 0.7 : 1})` }} aria-hidden="true" />
       <div className={animation} style={{ transform: `translateY(${jumpOffset}px) scaleX(${flip})` }}>
         <div

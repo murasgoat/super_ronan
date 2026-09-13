@@ -9,7 +9,7 @@ import { StageTransition } from "@/components/rpg/stage-transition"
 import { usePlayerControls } from "@/hooks/use-player-controls"
 import { INTRO_NPC, MAIN_OBJECTIVE, PARTY } from "@/lib/characters"
 import { createStageManager, type StageId } from "@/lib/stage-manager"
-import { checkPlayerAttackRange } from "@/lib/enemy-ai"
+import { checkPlayerAttackRange, DRAGON_PROJECTILE_DAMAGE, DRAGON_PROJECTILE_RADIUS } from "@/lib/enemy-ai"
 import type { Enemy, Dragon, Projectile } from "@/lib/enemy-ai"
 import { updateSoldier, updateDragon } from "@/lib/enemy-ai"
 import { isInViewport, STAGE_THEMES } from "@/lib/stage-themes"
@@ -59,6 +59,7 @@ export default function Page() {
   const [enemies, setEnemies] = useState<Enemy[]>([])
   const [objectiveProgress, setObjectiveProgress] = useState(0)
   const [playerDamageFreeze, setPlayerDamageFreeze] = useState(0)
+  const [playerHit, setPlayerHit] = useState(false)
   const manager = useRef(createStageManager())
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const gameContainerRef = useRef<HTMLElement | null>(null)
@@ -148,7 +149,7 @@ export default function Page() {
   const player = usePlayerControls(phase === "playing", () => attack(player.x, player.y), stage, hero.speed)
 
   const interact = useCallback(() => {
-    if (stage === 1 && player.x > 300 && Math.abs(player.y) < 90) completeObjective("elder")
+    if (stage === 1 && player.x > 110 && Math.abs(player.y) < 125) completeObjective("elder")
     if (stage === 2 && crystalDropped && player.x > 0) {
       setCrystalCollected(true)
       completeObjective("crystal")
@@ -227,10 +228,15 @@ export default function Page() {
       if (stage === 2 && dragonProjectiles.length > 0) {
         for (const proj of dragonProjectiles) {
           const dist = Math.sqrt(proj.x ** 2 + proj.y ** 2)
-          if (dist < 30 && now - playerDamageFreeze > 500) {
+          if (dist < DRAGON_PROJECTILE_RADIUS + 14 && now - playerDamageFreeze > 500) {
             setPlayerDamageFreeze(now)
-            hero.hp = Math.max(0, hero.hp - 1)
-            if (hero.hp <= 0) setPhase("clear")
+            setPlayerHit(true)
+            window.setTimeout(() => setPlayerHit(false), 180)
+            setHero((current) => {
+              const hp = Math.max(0, current.hp - DRAGON_PROJECTILE_DAMAGE)
+              if (hp <= 0) setPhase("clear")
+              return { ...current, hp }
+            })
             break
           }
         }
@@ -243,8 +249,13 @@ export default function Page() {
             const dist = Math.sqrt((enemy.x - player.x) ** 2 + (enemy.y - player.y) ** 2)
             if (dist < 50) {
               setPlayerDamageFreeze(now)
-              hero.hp = Math.max(0, hero.hp - 1)
-              if (hero.hp <= 0) setPhase("clear")
+              setPlayerHit(true)
+              window.setTimeout(() => setPlayerHit(false), 180)
+              setHero((current) => {
+                const hp = Math.max(0, current.hp - 1)
+                if (hp <= 0) setPhase("clear")
+                return { ...current, hp }
+              })
               break
             }
           }
@@ -316,7 +327,7 @@ export default function Page() {
       <div className="absolute inset-x-0 top-1/2 mx-auto h-px max-w-5xl bg-amber-200/10" aria-hidden="true" />
 
       {stage === 1 && (
-        <div className="absolute right-12 top-1/2 z-10 -translate-y-1/2 text-center">
+        <div className="absolute left-[calc(50%+170px)] top-1/2 z-10 -translate-y-1/2 text-center">
           <img src="/sprites/elder-npc.png" alt="Ancião" className="pixelated h-24 w-20" />
           <p className="font-pixel-body text-xl text-amber-100">Ancião</p>
         </div>
@@ -337,7 +348,7 @@ export default function Page() {
       {dragonProjectiles.filter((proj) => isInViewport(proj.x, proj.y)).map((proj) => (
         <div
           key={proj.id}
-          className="absolute z-[6] h-3 w-3 rounded-full bg-red-500 shadow-lg"
+          className={`absolute z-[6] h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 shadow-[0_0_20px_8px_rgba(248,113,113,0.75)] ${playerHit ? "animate-pulse" : ""}`}
           style={{ left: `calc(50% + ${proj.x}px)`, top: `calc(50% + ${proj.y}px)`, pointerEvents: "none" }}
           aria-hidden="true"
         />
@@ -387,7 +398,7 @@ export default function Page() {
         </div>
       )}
 
-      {phase === "playing" && <PlayerSprite src={hero.image} name={hero.realName} state={player} />}
+      {phase === "playing" && <PlayerSprite src={hero.image} name={hero.realName} state={player} hit={playerHit} />}
       <div
         className={inDialogue ? "absolute inset-0 cursor-pointer" : "absolute inset-0"}
         onClick={

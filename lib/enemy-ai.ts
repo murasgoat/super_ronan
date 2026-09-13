@@ -33,8 +33,10 @@ const SOLDIER_ATTACK_RANGE = 35
 const DRAGON_SPEED = 0.8
 const DRAGON_CHASE_RANGE = 150
 const DRAGON_ATTACK_RANGE = 170
-const DRAGON_HITBOX_RADIUS = 86
+const DRAGON_HITBOX_RADIUS = 96
 const ATTACK_COOLDOWN = 2000
+export const DRAGON_PROJECTILE_RADIUS = 24
+export const DRAGON_PROJECTILE_DAMAGE = 30
 
 export function updateSoldier(
   soldier: Enemy,
