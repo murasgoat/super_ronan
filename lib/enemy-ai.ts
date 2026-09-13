@@ -36,7 +36,8 @@ const DRAGON_ATTACK_RANGE = 170
 const DRAGON_HITBOX_RADIUS = 96
 const ATTACK_COOLDOWN = 2000
 export const DRAGON_PROJECTILE_RADIUS = 24
-export const DRAGON_PROJECTILE_DAMAGE = 30
+export const DRAGON_ATTACK_DAMAGE = 10
+export const DRAGON_PROJECTILE_DAMAGE = DRAGON_ATTACK_DAMAGE
 
 export function updateSoldier(
   soldier: Enemy,

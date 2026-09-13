@@ -10,7 +10,7 @@ import { TransitionDoor } from "@/components/rpg/transition-door"
 import { usePlayerControls } from "@/hooks/use-player-controls"
 import { INTRO_NPC, MAIN_OBJECTIVE, PARTY } from "@/lib/characters"
 import { createStageManager, type StageId } from "@/lib/stage-manager"
-import { checkPlayerAttackRange, DRAGON_PROJECTILE_DAMAGE, DRAGON_PROJECTILE_RADIUS } from "@/lib/enemy-ai"
+import { checkPlayerAttackRange, DRAGON_ATTACK_DAMAGE, DRAGON_PROJECTILE_DAMAGE, DRAGON_PROJECTILE_RADIUS } from "@/lib/enemy-ai"
 import type { Enemy, Dragon, Projectile } from "@/lib/enemy-ai"
 import { updateSoldier, updateDragon } from "@/lib/enemy-ai"
 import { isInViewport, STAGE_THEMES } from "@/lib/stage-themes"
@@ -214,6 +214,17 @@ export default function Page() {
           )
           dragonActionTimerRef.current = result.attacking ? now : dragonActionTimerRef.current
           setDragonProjectiles(result.projectiles.slice(0, 5))
+
+          if (result.attacking && now - playerDamageFreeze >= 500) {
+            setPlayerDamageFreeze(now)
+            setPlayerHit(true)
+            window.setTimeout(() => setPlayerHit(false), 180)
+            setHero((current) => {
+              const hp = Math.max(0, current.hp - DRAGON_ATTACK_DAMAGE)
+              if (hp <= 0) setPhase("clear")
+              return { ...current, hp }
+            })
+          }
         }
       }
 
@@ -235,11 +246,11 @@ export default function Page() {
         )
       }
 
-      // Dano ao jogador por projéteis do dragão
-      if (stage === 2 && dragonProjectiles.length > 0) {
+      // O Dragão aplica 10 de dano e respeita 0,5s de invulnerabilidade.
+      if (stage === 2 && dragonProjectiles.length > 0 && now - playerDamageFreeze >= 500) {
         for (const proj of dragonProjectiles) {
-          const dist = Math.sqrt(proj.x ** 2 + proj.y ** 2)
-          if (dist < DRAGON_PROJECTILE_RADIUS + 14 && now - playerDamageFreeze > 500) {
+          const dist = Math.hypot(proj.x - player.x, proj.y - player.y)
+          if (dist < DRAGON_PROJECTILE_RADIUS + 14) {
             setPlayerDamageFreeze(now)
             setPlayerHit(true)
             window.setTimeout(() => setPlayerHit(false), 180)
