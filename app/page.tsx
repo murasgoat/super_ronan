@@ -6,6 +6,7 @@ import { GameHud } from "@/components/rpg/game-hud"
 import { IntroCutscene } from "@/components/rpg/intro-cutscene"
 import { PlayerSprite } from "@/components/rpg/player-sprite"
 import { StageTransition } from "@/components/rpg/stage-transition"
+import { TransitionDoor } from "@/components/rpg/transition-door"
 import { usePlayerControls } from "@/hooks/use-player-controls"
 import { INTRO_NPC, MAIN_OBJECTIVE, PARTY } from "@/lib/characters"
 import { createStageManager, type StageId } from "@/lib/stage-manager"
@@ -149,17 +150,27 @@ export default function Page() {
   const player = usePlayerControls(phase === "playing", () => attack(player.x, player.y), stage, hero.speed)
 
   const interact = useCallback(() => {
-    if (stage === 1 && player.x > 110 && Math.abs(player.y) < 125) completeObjective("elder")
-    if (stage === 2 && crystalDropped && player.x > 0) {
+    const near = (targetX: number, targetY: number, radius: number) =>
+      Math.hypot(player.x - targetX, player.y - targetY) <= radius
+
+    if (stage === 1 && near(170, 0, 150)) completeObjective("elder")
+    if (stage === 2 && crystalDropped && !crystalCollected && near(0, 0, 115)) {
       setCrystalCollected(true)
       completeObjective("crystal")
     }
-  }, [completeObjective, crystalDropped, player.x, stage])
+    const remainingEnemies = enemies.filter((enemy) => enemy.hp > 0).length
+    if ((stage === 3 || stage === 4) && remainingEnemies === 0 && near(0, 0, 120)) {
+      completeObjective(stage === 3 ? "enemies" : "final-enemies")
+    }
+  }, [completeObjective, crystalCollected, crystalDropped, enemies, player.x, player.y, stage])
 
   useEffect(() => {
     if (phase !== "playing") return
     const onKey = (event: KeyboardEvent) => {
-      if (event.code === "KeyE") interact()
+      if (event.code === "KeyE" || event.code === "Space") {
+        event.preventDefault()
+        interact()
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -252,7 +263,7 @@ export default function Page() {
               setPlayerHit(true)
               window.setTimeout(() => setPlayerHit(false), 180)
               setHero((current) => {
-                const hp = Math.max(0, current.hp - 1)
+                const hp = Math.max(0, current.hp - 10)
                 if (hp <= 0) setPhase("clear")
                 return { ...current, hp }
               })
@@ -271,8 +282,6 @@ export default function Page() {
 
   const objective = useMemo(() => manager.current.getObjectives()[0], [stage, objectiveProgress])
   const livingEnemies = enemies.filter((enemy) => enemy.hp > 0).length
-  const isDoorOpen = stage === 3 && livingEnemies === 0
-  const isFinalDoorOpen = stage === 4 && livingEnemies === 0
   const isFinalVictory = stage === 5 && livingEnemies === 0 && manager.current.canAdvance()
 
   useEffect(() => {
@@ -385,17 +394,8 @@ export default function Page() {
             )
         )}
 
-      {(stage === 3 || stage === 4 || stage === 5) && (
-        <div
-          className={`absolute right-5 top-1/2 z-10 -translate-y-1/2 border-4 p-4 text-center ${
-            isDoorOpen || isFinalDoorOpen || stage === 5 ? "border-amber-400 bg-amber-900/80" : "border-stone-700 bg-stone-950/80"
-          }`}
-        >
-          <div className="text-4xl">{isDoorOpen || isFinalDoorOpen ? "▱" : stage === 5 ? "✹" : "▣"}</div>
-          <p className="font-pixel-body text-lg text-amber-100">
-            {stage === 5 ? (livingEnemies === 0 ? "Portal Final" : "Chefe Final") : isDoorOpen || isFinalDoorOpen ? "Porta aberta" : "Porta trancada"}
-          </p>
-        </div>
+      {(stage === 3 || stage === 4) && livingEnemies === 0 && (
+        <TransitionDoor stage={stage} open />
       )}
 
       {phase === "playing" && <PlayerSprite src={hero.image} name={hero.realName} state={player} hit={playerHit} />}
@@ -463,15 +463,6 @@ export default function Page() {
             )}
           </p>
         </div>
-      )}
-
-      {(stage === 3 || stage === 4) && (isDoorOpen || isFinalDoorOpen) && (
-        <button
-          className="absolute right-5 top-[62%] z-30 border-2 border-amber-400 bg-amber-900 px-3 py-2 font-pixel-body text-xl text-amber-100"
-          onClick={() => completeObjective(stage === 3 ? "enemies" : "final-enemies")}
-        >
-          Entrar na porta
-        </button>
       )}
 
       {phase === "playing" && (

@@ -29,7 +29,7 @@ export interface Projectile {
 
 const SOLDIER_SPEED = 1.5
 const SOLDIER_CHASE_RANGE = 120
-const SOLDIER_ATTACK_RANGE = 35
+const SOLDIER_ATTACK_RANGE = 58
 const DRAGON_SPEED = 0.8
 const DRAGON_CHASE_RANGE = 150
 const DRAGON_ATTACK_RANGE = 170
@@ -125,7 +125,7 @@ export function checkPlayerAttackRange(
   targetY: number,
   isBoss = false
 ): boolean {
-  const PLAYER_ATTACK_RANGE = isBoss ? 120 : 40
+  const PLAYER_ATTACK_RANGE = isBoss ? 120 : 58
   const dist = distance(playerX, playerY, targetX, targetY)
   return dist < PLAYER_ATTACK_RANGE + (isBoss ? DRAGON_HITBOX_RADIUS : 0)
 }
