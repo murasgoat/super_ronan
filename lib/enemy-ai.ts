@@ -39,6 +39,11 @@ export const DRAGON_PROJECTILE_RADIUS = 24
 export const DRAGON_ATTACK_DAMAGE = 10
 export const DRAGON_PROJECTILE_DAMAGE = DRAGON_ATTACK_DAMAGE
 
+// Chefe final (Fase 5): perseguição global contínua e hitbox colossal.
+const BOSS_SPEED = 1.7
+const BOSS_ATTACK_RANGE = 150
+export const BOSS_HITBOX_RADIUS = 150
+
 export function updateSoldier(
   soldier: Enemy,
   playerX: number,
@@ -108,6 +113,28 @@ export function updateDragon(
   return { vx, vy, attacking, projectiles }
 }
 
+/**
+ * IA do Chefe Final: perseguição global. Independente da distância, o boss
+ * sempre se move em direção ao jogador (pathfinding direto em tempo real).
+ */
+export function updateBoss(
+  boss: Enemy,
+  playerX: number,
+  playerY: number
+): { vx: number; vy: number; attacking: boolean } {
+  const dx = playerX - boss.x
+  const dy = playerY - boss.y
+  const dist = distance(boss.x, boss.y, playerX, playerY)
+  const angle = Math.atan2(dy, dx)
+  const moving = dist > BOSS_ATTACK_RANGE * 0.4
+
+  return {
+    vx: moving ? Math.cos(angle) * BOSS_SPEED : 0,
+    vy: moving ? Math.sin(angle) * BOSS_SPEED : 0,
+    attacking: dist < BOSS_ATTACK_RANGE,
+  }
+}
+
 export function checkEnemyAttackRange(
   enemyX: number,
   enemyY: number,
@@ -124,9 +151,10 @@ export function checkPlayerAttackRange(
   playerY: number,
   targetX: number,
   targetY: number,
-  isBoss = false
+  isBoss = false,
+  customRange?: number
 ): boolean {
-  const PLAYER_ATTACK_RANGE = isBoss ? 120 : 58
+  const PLAYER_ATTACK_RANGE = customRange ?? (isBoss ? 120 : 58)
   const dist = distance(playerX, playerY, targetX, targetY)
   return dist < PLAYER_ATTACK_RANGE + (isBoss ? DRAGON_HITBOX_RADIUS : 0)
 }

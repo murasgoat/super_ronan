@@ -12,7 +12,7 @@ import { INTRO_NPC, MAIN_OBJECTIVE, PARTY } from "@/lib/characters"
 import { createStageManager, type StageId } from "@/lib/stage-manager"
 import { checkPlayerAttackRange, DRAGON_ATTACK_DAMAGE, DRAGON_PROJECTILE_DAMAGE, DRAGON_PROJECTILE_RADIUS } from "@/lib/enemy-ai"
 import type { Enemy, Dragon, Projectile } from "@/lib/enemy-ai"
-import { updateSoldier, updateDragon } from "@/lib/enemy-ai"
+import { updateSoldier, updateDragon, updateBoss } from "@/lib/enemy-ai"
 import { isInViewport, STAGE_THEMES } from "@/lib/stage-themes"
 
 type Phase = "select" | "intro" | "dialogue" | "playing" | "clear"
@@ -39,12 +39,33 @@ const ENEMY_SETS: Record<3 | 4 | 5, Enemy[]> = {
     { id: 4, name: "Sentinela", hp: 2, maxHp: 2, x: 280, y: 80, vx: 0, vy: 0, actionTimer: 0 },
   ],
   4: [
-    { id: 1, name: "Guardião", hp: 3, maxHp: 3, x: -180, y: -120, vx: 0, vy: 0, actionTimer: 0 },
-    { id: 2, name: "Guardião", hp: 3, maxHp: 3, x: 200, y: 100, vx: 0, vy: 0, actionTimer: 0 },
+    { id: 1, name: "Guardião Elite", hp: 4, maxHp: 4, x: -180, y: -120, vx: 0, vy: 0, actionTimer: 0 },
+    { id: 2, name: "Guardião Elite", hp: 4, maxHp: 4, x: 200, y: 100, vx: 0, vy: 0, actionTimer: 0 },
   ],
+  // Chefe Final: resiste a exatamente 20 golpes (o ataque do jogador causa 1 por golpe).
   5: [
-    { id: 1, name: "Feiticeiro Sombrio", hp: 5, maxHp: 5, x: 0, y: 0, vx: 0, vy: 0, actionTimer: 0 },
+    { id: 1, name: "Feiticeiro Sombrio", hp: 20, maxHp: 20, x: 0, y: 0, vx: 0, vy: 0, actionTimer: 0 },
   ],
+}
+
+/**
+ * Configuração visual e de combate por fase.
+ * - scale: classe de tamanho do sprite renderizado.
+ * - barClass: largura da barra de vida (proporcional ao sprite).
+ * - hitReach: alcance de ataque do jogador contra o inimigo (proporcional ao tamanho).
+ * - contactRange: distância em que o inimigo causa dano por contato.
+ * - contactDamage: dano infligido ao jogador por golpe.
+ */
+const ENEMY_STAGE_CONFIG: Record<3 | 4 | 5, {
+  scale: string
+  barClass: string
+  hitReach: number
+  contactRange: number
+  contactDamage: number
+}> = {
+  3: { scale: "h-16 w-16", barClass: "w-16", hitReach: 58, contactRange: 50, contactDamage: 10 },
+  4: { scale: "h-28 w-28", barClass: "w-28", hitReach: 90, contactRange: 82, contactDamage: 5 },
+  5: { scale: "h-56 w-56", barClass: "w-40", hitReach: 170, contactRange: 150, contactDamage: 20 },
 }
 
 export default function Page() {
@@ -115,8 +136,9 @@ export default function Page() {
           let updated = [...current]
           let damageDealt = false
 
+          const reach = ENEMY_STAGE_CONFIG[stage as 3 | 4 | 5].hitReach
           for (const enemy of updated) {
-            if (enemy.hp > 0 && checkPlayerAttackRange(playerX, playerY, enemy.x, enemy.y)) {
+            if (enemy.hp > 0 && checkPlayerAttackRange(playerX, playerY, enemy.x, enemy.y, false, reach)) {
               enemy.hp = Math.max(0, enemy.hp - 1)
               damageDealt = true
               break
@@ -245,7 +267,8 @@ export default function Page() {
           current.map((enemy) => {
             if (enemy.hp <= 0) return enemy
 
-            const ai = updateSoldier(enemy, player.x, player.y)
+            // Fase 5: o Boss usa perseguição global (chase contínuo em tempo real).
+            const ai = stage === 5 ? updateBoss(enemy, player.x, player.y) : updateSoldier(enemy, player.x, player.y)
             return {
               ...enemy,
               x: Math.max(-420, Math.min(420, enemy.x + ai.vx)),
@@ -276,17 +299,18 @@ export default function Page() {
         }
       }
 
-      // Dano ao jogador por contato com inimigos
+      // Dano ao jogador por contato com inimigos (dano/alcance por fase)
       if (hasPlayerMoved && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0 && now - playerDamageFreeze > 500) {
+        const cfg = ENEMY_STAGE_CONFIG[stage as 3 | 4 | 5]
         for (const enemy of enemies) {
           if (enemy.hp > 0 && enemy.attacking) {
             const dist = Math.sqrt((enemy.x - player.x) ** 2 + (enemy.y - player.y) ** 2)
-            if (dist < 50) {
+            if (dist < cfg.contactRange) {
               setPlayerDamageFreeze(now)
               setPlayerHit(true)
               window.setTimeout(() => setPlayerHit(false), 180)
               setHero((current) => {
-                const hp = Math.max(0, current.hp - 10)
+                const hp = Math.max(0, current.hp - cfg.contactDamage)
                 if (hp <= 0) setPhase("clear")
                 return { ...current, hp }
               })
@@ -394,28 +418,33 @@ export default function Page() {
       )}
 
       {(stage === 3 || stage === 4 || stage === 5) &&
-        enemies.filter((enemy) => enemy.hp > 0 && isInViewport(enemy.x, enemy.y)).map(
-          (enemy) =>
-            (
-              <div
-                key={enemy.id}
-                className="absolute z-[6] -translate-x-1/2 -translate-y-1/2 text-center"
-                style={{ left: `calc(50% + ${enemy.x}px)`, top: `calc(50% + ${enemy.y}px)` }}
-              >
-                <img
-                  src={stage === 5 ? "/sprites/final-warden.png" : "/sprites/soldier-enemy.png"}
-                  alt={enemy.name}
-                  className="pixelated h-16 w-16"
+        enemies.filter((enemy) => enemy.hp > 0 && isInViewport(enemy.x, enemy.y)).map((enemy) => {
+          const cfg = ENEMY_STAGE_CONFIG[stage as 3 | 4 | 5]
+          return (
+            <div
+              key={enemy.id}
+              className="absolute z-[6] -translate-x-1/2 -translate-y-1/2 text-center"
+              style={{ left: `calc(50% + ${enemy.x}px)`, top: `calc(50% + ${enemy.y}px)` }}
+            >
+              <img
+                src={stage === 5 ? "/sprites/final-warden.png" : "/sprites/soldier-enemy.png"}
+                alt={enemy.name}
+                className={`pixelated ${cfg.scale} ${stage === 5 ? "drop-shadow-[0_0_24px_rgba(168,85,247,0.85)] animate-pulse" : ""}`}
+              />
+              <div className={`mt-1 h-2 ${cfg.barClass} bg-stone-900`}>
+                <div
+                  className="h-full bg-emerald-400 transition-all"
+                  style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }}
                 />
-                <div className="mt-1 h-2 w-16 bg-stone-900">
-                  <div
-                    className="h-full bg-emerald-400 transition-all"
-                    style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }}
-                  />
-                </div>
               </div>
-            )
-        )}
+              {stage === 5 && (
+                <p className="mt-1 font-pixel-body text-xl text-fuchsia-200">
+                  {enemy.name} · {enemy.hp}/{enemy.maxHp}
+                </p>
+              )}
+            </div>
+          )
+        })}
 
       {(stage === 3 || stage === 4) && livingEnemies === 0 && (
         <TransitionDoor stage={stage} open />
