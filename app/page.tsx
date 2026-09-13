@@ -43,8 +43,9 @@ const ENEMY_SETS: Record<3 | 4 | 5, Enemy[]> = {
     { id: 2, name: "Guardião Elite", hp: 4, maxHp: 4, x: 200, y: 100, vx: 0, vy: 0, actionTimer: 0 },
   ],
   // Chefe Final: resiste a exatamente 20 golpes (o ataque do jogador causa 1 por golpe).
+  // Começa sentado no trono, na extremidade norte da arena.
   5: [
-    { id: 1, name: "Feiticeiro Sombrio", hp: 20, maxHp: 20, x: 0, y: 0, vx: 0, vy: 0, actionTimer: 0 },
+    { id: 1, name: "Feiticeiro Sombrio", hp: 20, maxHp: 20, x: 0, y: -260, vx: 0, vy: 0, actionTimer: 0 },
   ],
 }
 
@@ -83,6 +84,8 @@ export default function Page() {
   const [playerDamageFreeze, setPlayerDamageFreeze] = useState(0)
   const [playerHit, setPlayerHit] = useState(false)
   const [hasPlayerMoved, setHasPlayerMoved] = useState(false)
+  const [bossCutscene, setBossCutscene] = useState(false)
+  const [bossAwakened, setBossAwakened] = useState(false)
   const manager = useRef(createStageManager())
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
   const gameContainerRef = useRef<HTMLElement | null>(null)
@@ -98,6 +101,8 @@ export default function Page() {
     setCrystalCollected(false)
     setPlayerDamageFreeze(0)
     setHasPlayerMoved(false)
+    setBossCutscene(false)
+    setBossAwakened(false)
     dragonActionTimerRef.current = 0
     setEnemies(
       next === 3 || next === 4 || next === 5
@@ -176,12 +181,26 @@ export default function Page() {
   }, [])
 
   const player = usePlayerControls(
-    phase === "playing",
+    phase === "playing" && !bossCutscene,
     () => attack(player.x, player.y),
     stage,
     hero.speed,
     handleFirstMovement,
   )
+
+  // Cutscene de entrada do Chefe Final: ao primeiro movimento na Fase 5,
+  // congela o jogador (~1.8s), toca a animação de despertar e então
+  // libera o controle e ativa a IA de perseguição do Boss.
+  useEffect(() => {
+    if (phase !== "playing" || stage !== 5) return
+    if (!hasPlayerMoved || bossAwakened || bossCutscene) return
+    setBossCutscene(true)
+    const timer = window.setTimeout(() => {
+      setBossCutscene(false)
+      setBossAwakened(true)
+    }, 1800)
+    return () => window.clearTimeout(timer)
+  }, [phase, stage, hasPlayerMoved, bossAwakened, bossCutscene])
 
   const interact = useCallback(() => {
     const near = (targetX: number, targetY: number, radius: number) =>
@@ -262,7 +281,10 @@ export default function Page() {
         }
       }
 
-      if (hasPlayerMoved && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0) {
+      // Fase 5: a IA do boss só ativa após a cutscene de despertar (bossAwakened).
+      const enemiesActive = stage === 5 ? bossAwakened : hasPlayerMoved
+      if (enemiesActive && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0) {
+        const bounds = stage === 5 ? { x: 620, y: 360 } : { x: 420, y: 200 }
         setEnemies((current) =>
           current.map((enemy) => {
             if (enemy.hp <= 0) return enemy
@@ -271,8 +293,8 @@ export default function Page() {
             const ai = stage === 5 ? updateBoss(enemy, player.x, player.y) : updateSoldier(enemy, player.x, player.y)
             return {
               ...enemy,
-              x: Math.max(-420, Math.min(420, enemy.x + ai.vx)),
-              y: Math.max(-200, Math.min(200, enemy.y + ai.vy)),
+              x: Math.max(-bounds.x, Math.min(bounds.x, enemy.x + ai.vx)),
+              y: Math.max(-bounds.y, Math.min(bounds.y, enemy.y + ai.vy)),
               vx: ai.vx,
               vy: ai.vy,
               attacking: ai.attacking,
@@ -300,7 +322,7 @@ export default function Page() {
       }
 
       // Dano ao jogador por contato com inimigos (dano/alcance por fase)
-      if (hasPlayerMoved && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0 && now - playerDamageFreeze > 500) {
+      if (enemiesActive && (stage === 3 || stage === 4 || stage === 5) && enemies.length > 0 && now - playerDamageFreeze > 500) {
         const cfg = ENEMY_STAGE_CONFIG[stage as 3 | 4 | 5]
         for (const enemy of enemies) {
           if (enemy.hp > 0 && enemy.attacking) {
@@ -325,7 +347,7 @@ export default function Page() {
     return () => {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current)
     }
-  }, [phase, stage, player.x, player.y, dragonHp, dragonProjectiles, enemies, playerDamageFreeze, hasPlayerMoved])
+  }, [phase, stage, player.x, player.y, dragonHp, dragonProjectiles, enemies, playerDamageFreeze, hasPlayerMoved, bossAwakened])
 
   const objective = useMemo(() => manager.current.getObjectives()[0], [stage, objectiveProgress])
   const livingEnemies = enemies.filter((enemy) => enemy.hp > 0).length
@@ -417,6 +439,30 @@ export default function Page() {
         </div>
       )}
 
+      {/* Arena infernal da Fase 5: rachaduras de lava, pilares em chamas e trono ao norte */}
+      {stage === 5 && (
+        <>
+          <div className="lava-cracks pointer-events-none absolute inset-0 z-[2]" aria-hidden="true" />
+          {[12, 88].map((left) => (
+            <div
+              key={left}
+              className="pointer-events-none absolute bottom-0 z-[3] flex -translate-x-1/2 flex-col items-center"
+              style={{ left: `${left}%` }}
+              aria-hidden="true"
+            >
+              <div className="flame-crown h-16 w-14" />
+              <div className="flame-pillar h-48 w-10" />
+            </div>
+          ))}
+          <div
+            className="pointer-events-none absolute left-1/2 top-[4%] z-[3] -translate-x-1/2 text-center"
+            aria-hidden="true"
+          >
+            <img src="/sprites/dark-throne.png" alt="" className="pixelated h-48 w-48 drop-shadow-[0_0_30px_rgba(249,115,22,0.7)]" />
+          </div>
+        </>
+      )}
+
       {(stage === 3 || stage === 4 || stage === 5) &&
         enemies.filter((enemy) => enemy.hp > 0 && isInViewport(enemy.x, enemy.y)).map((enemy) => {
           const cfg = ENEMY_STAGE_CONFIG[stage as 3 | 4 | 5]
@@ -429,7 +475,7 @@ export default function Page() {
               <img
                 src={stage === 5 ? "/sprites/final-warden.png" : "/sprites/soldier-enemy.png"}
                 alt={enemy.name}
-                className={`pixelated ${cfg.scale} ${stage === 5 ? "drop-shadow-[0_0_24px_rgba(168,85,247,0.85)] animate-pulse" : ""}`}
+                className={`pixelated ${cfg.scale} ${stage === 5 ? `drop-shadow-[0_0_24px_rgba(168,85,247,0.85)] ${bossCutscene ? "anim-boss-rise" : "animate-pulse"}` : ""}`}
               />
               <div className={`mt-1 h-2 ${cfg.barClass} bg-stone-900`}>
                 <div
